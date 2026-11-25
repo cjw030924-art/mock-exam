@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>모의시험</title>
+<style>
+  :root { --bg:#f4f6fb; --card:#fff; --text:#1f2937; --sub:#6b7280; --accent:#4f46e5; --ok:#16a34a; --bad:#dc2626; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Pretendard","Malgun Gothic",sans-serif; background:var(--bg); color:var(--text);
+         min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:48px 16px; }
+  h1 { font-size:2rem; margin-bottom:8px; }
+  p.desc { color:var(--sub); margin-bottom:36px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; width:100%; max-width:900px; }
+  .subject { background:var(--card); border:2px solid transparent; border-radius:14px; padding:28px 20px;
+             font-size:1.1rem; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.06);
+             transition:.15s; display:flex; flex-direction:column; align-items:center; gap:10px; color:var(--text); }
+  .subject .icon { font-size:2.2rem; }
+  .subject:hover { border-color:var(--accent); transform:translateY(-3px); box-shadow:0 6px 16px rgba(79,70,229,.15); }
+  #exam { display:none; width:100%; max-width:720px; }
+  .back { background:none; border:none; color:var(--accent); font-size:1rem; cursor:pointer; margin-bottom:20px; }
+  .bar { height:8px; background:#e5e7eb; border-radius:4px; overflow:hidden; margin:12px 0 24px; }
+  .bar div { height:100%; background:var(--accent); transition:width .3s; }
+  .meta { display:flex; justify-content:space-between; color:var(--sub); font-size:.95rem; }
+  .card { background:var(--card); border-radius:14px; padding:28px; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+  .q { font-size:1.15rem; line-height:1.6; margin-bottom:20px; white-space:pre-line; }
+  .opt { display:block; width:100%; text-align:left; padding:14px 16px; margin-bottom:10px; border:2px solid #e5e7eb;
+         border-radius:10px; background:#fff; font-size:1rem; cursor:pointer; color:var(--text); }
+  .opt:hover:not(:disabled) { border-color:var(--accent); }
+  .opt.sel { border-color:var(--accent); background:#eef2ff; }
+  .opt.correct { border-color:var(--ok); background:#dcfce7; }
+  .opt.wrong { border-color:var(--bad); background:#fee2e2; }
+  input.ans { width:100%; padding:14px; font-size:1rem; border:2px solid #e5e7eb; border-radius:10px; }
+  input.ans:focus { outline:none; border-color:var(--accent); }
+  .fb { margin-top:16px; padding:14px; border-radius:10px; font-weight:600; display:none; line-height:1.5; }
+  .fb.ok { display:block; background:#dcfce7; color:var(--ok); }
+  .fb.no { display:block; background:#fee2e2; color:var(--bad); }
+  .fb small { display:block; font-weight:400; color:var(--text); margin-top:6px; }
+  .main { margin-top:20px; width:100%; padding:14px; font-size:1.05rem; font-weight:600; border:none; border-radius:10px;
+          background:var(--accent); color:#fff; cursor:pointer; }
+  .main:disabled { background:#c7c9d9; cursor:not-allowed; }
+  .nav { display:flex; justify-content:space-between; gap:10px; margin-top:12px; }
+  .nav button { flex:1; padding:12px; font-size:.95rem; border:2px solid #e5e7eb; border-radius:10px; background:#fff;
+                color:var(--text); cursor:pointer; }
+  .nav button:hover:not(:disabled) { border-color:var(--accent); }
+  .nav button:disabled { opacity:.4; cursor:not-allowed; }
+  .result { text-align:center; }
+  .result .score { font-size:3rem; font-weight:800; color:var(--accent); margin:16px 0; }
+  .wronglist { text-align:left; margin-top:20px; color:var(--sub); line-height:1.8; }
+</style>
+</head>
+<body>
+  <section id="home">
+    <h1 style="text-align:center">📝 모의시험</h1>
+    <p class="desc" style="text-align:center">응시할 과목을 선택하세요</p>
+    <div class="grid" id="subjects"></div>
+  </section>
+
+  <section id="exam">
+    <button class="back" onclick="goHome()">← 과목 선택으로</button>
+    <h1 id="examTitle"></h1>
+    <div id="examBody"></div>
+  </section>
+
+<script>
+  // type 'mc' = 객관식(answer = 정답 index), 'short' = 주관식(answer = 허용 답 목록)
+  const QUESTIONS = {
+    network: [
+      { q:"Which message is sent by a DHCPv4 client to initiate the lease obtaining process?",
+        opts:["DCHPOFFER","DHCPACK","DHCPDISCOVER","DHCPREQUEST"], answer:2 },
+      { q:"As a DHCPv4 client lease is about to expire, what is the message that the client sends the DHCP server?",
+        type:"short", answer:["dhcprequest","request","dhcp request"], show:"DHCPREQUEST" },
+      { q:"What method is used by a host to verify an IPv6 address is unique on the local network before assigning that address to an interface?",
+        opts:["SLAAC","ARP","POST","PING","DAD"], answer:4 },
+      { q:"Which of following methods can be used to generate an interface ID by an IPv6 host that is using SLAAC?",
+        opts:["Stateful DHCPv6","DAD","ARP","EUI-64"], answer:3 },
+      { q:"What device presents the illusion of a single router to hosts on a LAN segment but actually represents a set of routers working together?",
+        opts:["Virtual router","Forwarding router","Default gateway","Layer 3 switch"], answer:0 },
+      { q:"On what switch ports should PortFast be enabled to enhance STP stability?",
+        opts:["All end-user ports","Only ports that attach to a neighboring switch","All trunk ports that are not root ports","Only ports that are elected as designated ports"], answer:0 },
+      { q:"Which of the following is an IEEE 802.15 WPAN standard that uses a device-pairing process to communicate?",
+        opts:["Wi-Fi","Cellular","Bluetooth","WiMAX"], answer:2 },
+      { q:"What is the term for an AP that openly advertises its service periodically?",
+        opts:["Infrastructure","Ad hoc","Active","Passive"], answer:3 },
+      { q:"Which of the following modulation techniques rapidly switches a signal among frequency channels?",
+        opts:["FHSS","DSSS","OFDMA","OFDM"], answer:0 },
+      { q:"What action will a router take on a packet with a destination IP address that is on a remote network?",
+        opts:["It will forward the packet to an Ethernet switch.","It will drop the packet.","It will forward the packet to a next-hop router.","It will forward the packet directly to the device with the destination IP address of the packet."], answer:2 },
+      { q:"A network administrator configures a static route for the same destination network that was learned automatically by the router using OSPF. Which route will be installed and why?",
+        opts:["OSPF route because it has a lower administrative distance","Static route because it has a lower administrative distance","OSPF route because it has a lower metric","Static route because it has a lower metric"], answer:1 },
+      { q:"What metric is used by OSPF to determine the best path?",
+        opts:["Cost","Decided by the network administrator","Hop count","Bandwidth and delay"], answer:0 },
+      { q:"Which feature on a Cisco router permits the forwarding of traffic for which there is no specific route?",
+        opts:["Gateway of last resort","Route source","Next-hop","Outgoing interface"], answer:0 },
+      { q:"What network address and subnet mask combination would be used to create a default static route that matches any IPv4 destination?",
+        opts:["0.0.0.0 0.0.0.0","0.0.0.0 255.255.255.255","255.255.255.255 255.255.255.255","255.255.255.255 0.0.0.0"], answer:0 },
+      { q:"A network administrator configures a router by the command ip route 0.0.0.0 0.0.0.0 209.165.200.226. What is the purpose of this command?",
+        opts:["To forward packets destined for the network 0.0.0.0 to the device with IP address 209.165.200.226","To provide a route to forward packets for which there is no route in the routing table","To add a dynamic route for the destination network 0.0.0.0 to the routing table","To forward all packets to the device with IP address 209.165.200.226"], answer:1 },
+      { q:"The address pool of a DHCP server is configured with 10.19.44.0/24. The network administrator reserves 4 IP addresses for servers. How many IP addresses are left in the pool to be assigned to other hosts?",
+        type:"short", answer:["250"], show:"250 (254 - 4)" },
+      { q:"What security benefit is gained from enabling BPDU guard on PortFast enabled interfaces?",
+        opts:["Preventing rogue switches from being added to the network","Protecting against Layer 2 loops","Enforcing the placement of root bridges","Preventing buffer overflow attacks"], answer:0 },
+      { q:"Which wireless network topology would be used by network engineers to provide a wireless network for an entire college building?",
+        opts:["Ad hoc","Hotspot","Infrastructure","Mixed mode"], answer:2 },
+      { q:"An IT security specialist enables port security on a switch port of a Cisco switch. What is the default violation mode in use until the switch port is configured to use a different violation mode?",
+        opts:["Restrict","Disabled","Protect","Shutdown"], answer:3 },
+      { q:"What type of wireless antenna is best suited for providing coverage in large open spaces, such as hallways or large conference rooms?",
+        opts:["Omnidirectional","Directional","Yagi","Dish"], answer:0 },
+      { q:"Consider the following command:\nip route 192.168.10.0 255.255.255.0 10.10.10.2 5\nWhat does the 5 at the end of the command signify?",
+        type:"short", answer:["administrative distance","ad","관리거리","관리 거리","admin distance"], show:"Administrative distance (관리 거리) — floating static route 설정용" },
+      { q:"What ICMPv6 message is sent by a host in an attempt to locate an online IPv6 enabled router to obtain IPv6 addressing information?",
+        type:"short", answer:["router solicitation","rs","router solicitation message","rs message"], show:"Router Solicitation (RS)" },
+      { q:"Which parameter is commonly used to identify a wireless network name when a home wireless AP is being configured?",
+        opts:["SSID","Ad hoc","BESS","ESS"], answer:0 },
+      { q:"What table does a router use to determine how to forward an IP packet?",
+        type:"short", answer:["routing table","routing","라우팅 테이블","라우팅테이블"], show:"Routing table (라우팅 테이블)" },
+      { q:"What type of telecommunication technology is used to provide Internet access to vessels at sea?",
+        type:"short", answer:["satellite","위성","satellite internet","위성 인터넷"], show:"Satellite (위성)" },
+    ],
+  };
+
+  const SUBJECTS = [
+    { id: "network",  name: "컴퓨터네트워크", icon: "🌐" },
+    { id: "security", name: "정보보안",       icon: "🔒" },
+    { id: "graphics", name: "컴퓨터그래픽스", icon: "🎨" },
+    { id: "algorithm",name: "알고리즘",       icon: "🧮" },
+    { id: "micro",    name: "마이크로프로세서", icon: "🔌" },
+  ];
+
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  let state = null;
+
+  SUBJECTS.forEach(s => {
+    const btn = document.createElement("button");
+    btn.className = "subject";
+    btn.innerHTML = `<span class="icon">${s.icon}</span>${s.name}`;
+    btn.onclick = () => selectSubject(s);
+    $("subjects").appendChild(btn);
+  });
+
+  function selectSubject(s) {
+    $("home").style.display = "none";
+    $("exam").style.display = "block";
+    $("examTitle").textContent = `${s.icon} ${s.name}`;
+    const qs = QUESTIONS[s.id];
+    if (!qs) { $("examBody").innerHTML = `<p class="desc">문제 준비 중입니다.</p>`; return; }
+    state = { qs, i: 0, answers: [] };
+    render();
+  }
+
+  const score = () => state.answers.filter(a => a && a.ok).length;
+  function go(d) { state.i = Math.max(0, Math.min(state.qs.length - 1, state.i + d)); render(); }
+
+  function render() {
+    const { qs, i } = state, q = qs[i];
+    state.sel = null; state.checked = false;
+    let body = q.type === "short"
+      ? `<input class="ans" id="ans" placeholder="답을 입력하세요" autocomplete="off">`
+      : q.opts.map((o, k) => `<button class="opt" data-k="${k}">${String.fromCharCode(9312 + k)} ${esc(o)}</button>`).join("");
+    $("examBody").innerHTML = `
+      <div class="meta"><span>문제 ${i + 1} / ${qs.length}</span><span>정답 ${score()}개</span></div>
+      <div class="bar"><div style="width:${i / qs.length * 100}%"></div></div>
+      <div class="card">
+        <div class="q"><b>${i + 1}.</b> ${esc(q.q)}</div>
+        ${body}
+        <div class="fb" id="fb"></div>
+        <button class="main" id="mainBtn" disabled>확인</button>
+        <div class="nav">
+          <button onclick="go(-1)" ${i === 0 ? "disabled" : ""}>← 이전 문제</button>
+          <button onclick="go(1)" ${i === qs.length - 1 ? "disabled" : ""}>다음 문제 →</button>
+        </div>
+      </div>`;
+    document.querySelectorAll(".opt").forEach(b => b.onclick = () => {
+      if (state.checked) return;
+      document.querySelectorAll(".opt").forEach(x => x.classList.remove("sel"));
+      b.classList.add("sel"); state.sel = +b.dataset.k; $("mainBtn").disabled = false;
+    });
+    if ($("ans")) {
+      $("ans").focus();
+      $("ans").oninput = e => $("mainBtn").disabled = !e.target.value.trim();
+    }
+    $("mainBtn").onclick = () => state.checked ? next() : check();
+    const saved = state.answers[i];
+    if (saved) {
+      if (q.type === "short") $("ans").value = saved.v;
+      else { state.sel = saved.v; document.querySelectorAll(".opt")[saved.v].classList.add("sel"); }
+      check(true);
+    }
+  }
+
+  function check(restoring) {
+    const q = state.qs[state.i];
+    let ok, answerText;
+    if (q.type === "short") {
+      const raw = $("ans").value;
+      const v = raw.trim().toLowerCase().replace(/\s+/g, " ");
+      ok = q.answer.includes(v);
+      answerText = q.show;
+      $("ans").disabled = true;
+    } else {
+      ok = state.sel === q.answer;
+      answerText = `${String.fromCharCode(9312 + q.answer)} ${q.opts[q.answer]}`;
+      const btns = document.querySelectorAll(".opt");
+      btns.forEach(b => b.disabled = true);
+      btns[q.answer].classList.add("correct");
+      if (!ok) btns[state.sel].classList.add("wrong");
+    }
+    if (!restoring) state.answers[state.i] = { v: q.type === "short" ? $("ans").value : state.sel, ok };
+    const fb = $("fb");
+    fb.className = "fb " + (ok ? "ok" : "no");
+    fb.innerHTML = (ok ? "⭕ 정답!" : "❌ 오답") + `<small>정답: ${esc(answerText)}</small>`;
+    state.checked = true;
+    const btn = $("mainBtn");
+    btn.textContent = state.i + 1 < state.qs.length ? "다음 문제 →" : "결과 보기";
+    btn.disabled = false;
+    if (!restoring) btn.focus();
+  }
+
+  function next() {
+    if (state.i + 1 < state.qs.length) { state.i++; return render(); }
+    const { qs } = state, sc = score();
+    const wrong = qs.map((_, k) => k + 1).filter(n => !(state.answers[n - 1] && state.answers[n - 1].ok));
+    $("examBody").innerHTML = `
+      <div class="card result">
+        <h2>시험 종료 🎉</h2>
+        <div class="score">${sc} / ${qs.length}</div>
+        <p>${Math.round(sc / qs.length * 100)}점</p>
+        ${wrong.length ? `<div class="wronglist">틀리거나 안 푼 문제: ${wrong.join(", ")}번</div>` : "<p>만점입니다!</p>"}
+        <button class="main" onclick="restart()">다시 풀기</button>
+      </div>`;
+  }
+
+  function restart() { state = { qs: state.qs, i: 0, answers: [] }; render(); }
+
+  // Enter: 확인 → 다음 문제 / 결과 보기
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Enter" || $("exam").style.display !== "block") return;
+    const btn = $("mainBtn");
+    if (!btn) return;
+    e.preventDefault();
+    if (!btn.disabled) btn.click();
+  });
+
+  function goHome() {
+    $("exam").style.display = "none";
+    $("home").style.display = "block";
+  }
+</script>
+</body>
+</html>
