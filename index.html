@@ -47,6 +47,31 @@
   .result { text-align:center; }
   .result .score { font-size:3rem; font-weight:800; color:var(--accent); margin:16px 0; }
   .wronglist { text-align:left; margin-top:20px; color:var(--sub); line-height:1.8; }
+  /* 단어장 */
+  .chgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; margin-top:8px; }
+  .chbtn { background:var(--card); border:2px solid transparent; border-radius:14px; padding:22px 12px; cursor:pointer;
+           box-shadow:0 2px 8px rgba(0,0,0,.06); transition:.15s; color:var(--text); display:flex; flex-direction:column; gap:6px; align-items:center; }
+  .chbtn b { font-size:1.4rem; }
+  .chbtn span { color:var(--sub); font-size:.9rem; }
+  .chbtn:hover { border-color:var(--accent); transform:translateY(-3px); }
+  .chbtn.soon { opacity:.6; border-style:dashed; border-color:#c7c9d9; }
+  .notice { margin-top:16px; padding:14px; border-radius:10px; background:#eef2ff; color:var(--accent); font-weight:600; text-align:center; display:none; }
+  .tools { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .tools button { padding:8px 12px; border:2px solid #e5e7eb; border-radius:999px; background:#fff; color:var(--text); cursor:pointer; font-size:.9rem; }
+  .tools button.on { border-color:var(--accent); background:#eef2ff; color:var(--accent); font-weight:600; }
+  .flash { background:var(--card); border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,.06); min-height:240px; padding:28px;
+           display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; cursor:pointer; user-select:none; }
+  .flash .sec { color:var(--sub); font-size:.85rem; margin-bottom:10px; }
+  .flash .front { font-size:1.6rem; font-weight:700; line-height:1.4; word-break:keep-all; }
+  .flash .ansback { font-size:1.1rem; line-height:1.7; margin-top:18px; padding-top:18px; border-top:1px solid #e5e7eb; width:100%; word-break:keep-all; }
+  .flash .hint { color:var(--sub); font-size:.85rem; margin-top:18px; }
+  .wlist { display:flex; flex-direction:column; gap:8px; }
+  .witem { background:var(--card); border-radius:10px; padding:14px 16px; box-shadow:0 1px 4px rgba(0,0,0,.05); line-height:1.6; }
+  .witem b { display:block; }
+  .witem small { color:var(--sub); }
+  .witem .d { color:var(--text); }
+  .witem.hide .d { filter:blur(6px); cursor:pointer; }
+  .sechead { color:var(--accent); font-weight:700; margin:12px 0 2px; }
 </style>
 </head>
 <body>
@@ -62,6 +87,7 @@
     <div id="examBody"></div>
   </section>
 
+<script src="graphics-words.js"></script>
 <script>
   // type 'mc' = 객관식(answer = 정답 index), 'short' = 주관식(answer = 허용 답 목록)
   const QUESTIONS = {
@@ -143,6 +169,8 @@
     $("home").style.display = "none";
     $("exam").style.display = "block";
     $("examTitle").textContent = `${s.icon} ${s.name}`;
+    vocab = null;
+    if (s.id === "graphics") return showChapters();
     const qs = QUESTIONS[s.id];
     if (!qs) { $("examBody").innerHTML = `<p class="desc">문제 준비 중입니다.</p>`; return; }
     state = { qs, i: 0, answers: [] };
@@ -243,9 +271,103 @@
   });
 
   function goHome() {
+    vocab = null;
     $("exam").style.display = "none";
     $("home").style.display = "block";
   }
+
+  // ===== 컴퓨터그래픽스 단어장 =====
+  const CHAPTERS = [5, 6, 7, 8, 9, 10, 11];
+  let vocab = null; // { ch, list, i, flipped, shuffle, reverse, mode:'card'|'list' }
+
+  function showChapters() {
+    vocab = null;
+    $("examBody").innerHTML = `
+      <p class="desc" style="margin-bottom:16px">공부할 장을 선택하세요 (단어장)</p>
+      <div class="chgrid">${CHAPTERS.map(ch => {
+        const w = WORDS[ch];
+        return `<button class="chbtn ${w ? "" : "soon"}" onclick="openChapter(${ch})">
+          <b>${ch}장</b><span>${w ? `단어 ${w.length}개` : "준비 중"}</span></button>`;
+      }).join("")}</div>
+      <div class="notice" id="notice"></div>`;
+  }
+
+  function openChapter(ch) {
+    if (!WORDS[ch]) {
+      const n = $("notice");
+      n.textContent = `🛠️ ${ch}장은 만들 예정입니다! 조금만 기다려 주세요.`;
+      n.style.display = "block";
+      return;
+    }
+    vocab = { ch, list: WORDS[ch].slice(), i: 0, flipped: false, shuffle: false, reverse: false, mode: "card" };
+    renderVocab();
+  }
+
+  function setVocab(opt) {
+    if (opt === "shuffle") {
+      vocab.shuffle = !vocab.shuffle;
+      vocab.list = WORDS[vocab.ch].slice();
+      if (vocab.shuffle) for (let k = vocab.list.length - 1; k > 0; k--) {
+        const r = Math.floor(Math.random() * (k + 1)); [vocab.list[k], vocab.list[r]] = [vocab.list[r], vocab.list[k]];
+      }
+      vocab.i = 0;
+    } else if (opt === "reverse") vocab.reverse = !vocab.reverse;
+    else vocab.mode = opt;
+    vocab.flipped = false;
+    renderVocab();
+  }
+
+  function moveCard(d) {
+    const n = vocab.list.length;
+    vocab.i = (vocab.i + d + n) % n; vocab.flipped = false; renderVocab();
+  }
+  function flipCard() { vocab.flipped = !vocab.flipped; renderVocab(); }
+
+  function renderVocab() {
+    const v = vocab, w = v.list[v.i], n = v.list.length;
+    const tools = `
+      <button class="back" onclick="showChapters()">← 장 선택으로</button>
+      <h2 style="margin-bottom:12px">${v.ch}장 단어장</h2>
+      <div class="tools">
+        <button class="${v.mode === "card" ? "on" : ""}" onclick="setVocab('card')">🃏 카드</button>
+        <button class="${v.mode === "list" ? "on" : ""}" onclick="setVocab('list')">📋 목록</button>
+        <button class="${v.shuffle ? "on" : ""}" onclick="setVocab('shuffle')">🔀 섞기</button>
+        <button class="${v.reverse ? "on" : ""}" onclick="setVocab('reverse')">🔁 뜻 먼저 보기</button>
+      </div>`;
+    if (v.mode === "list") {
+      let prev = null;
+      $("examBody").innerHTML = tools + `<div class="wlist">${v.list.map(x => {
+        const head = !v.shuffle && x.s && x.s !== prev ? `<div class="sechead">${esc(x.s)}</div>` : "";
+        prev = x.s;
+        const [a, b] = v.reverse ? [x.d, x.t] : [x.t, x.d];
+        return head + `<div class="witem hide" onclick="this.classList.toggle('hide')">
+          <b>${esc(a)}</b><span class="d">${esc(b)}</span></div>`;
+      }).join("")}</div>
+      <p class="desc" style="margin-top:12px">💡 항목을 누르면 가리기/보이기가 바뀝니다.</p>`;
+      return;
+    }
+    const [front, back] = v.reverse ? [w.d, w.t] : [w.t, w.d];
+    $("examBody").innerHTML = tools + `
+      <div class="meta"><span>${v.i + 1} / ${n}</span><span>${v.shuffle ? "섞음" : "순서대로"}</span></div>
+      <div class="bar"><div style="width:${(v.i + 1) / n * 100}%"></div></div>
+      <div class="flash" onclick="flipCard()">
+        ${w.s ? `<div class="sec">${esc(w.s)}</div>` : ""}
+        <div class="front" style="${v.reverse ? "font-size:1.15rem;font-weight:600" : ""}">${esc(front)}</div>
+        ${v.flipped ? `<div class="ansback" style="${v.reverse ? "font-size:1.5rem;font-weight:700" : ""}">${esc(back)}</div>`
+                    : `<div class="hint">눌러서 ${v.reverse ? "용어" : "뜻"} 보기 (Space)</div>`}
+      </div>
+      <div class="nav">
+        <button onclick="moveCard(-1)">← 이전</button>
+        <button onclick="moveCard(1)">다음 →</button>
+      </div>`;
+  }
+
+  document.addEventListener("keydown", e => {
+    if (!vocab || vocab.mode !== "card") return;
+    if (e.key === "ArrowLeft") moveCard(-1);
+    else if (e.key === "ArrowRight") moveCard(1);
+    else if (e.key === " " || e.key === "Enter") { e.preventDefault(); flipCard(); }
+  });
 </script>
 </body>
 </html>
