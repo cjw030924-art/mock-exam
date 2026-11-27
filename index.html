@@ -56,7 +56,12 @@
   .chbtn:hover { border-color:var(--accent); transform:translateY(-3px); }
   .chbtn.soon { opacity:.6; border-style:dashed; border-color:#c7c9d9; }
   .notice { margin-top:16px; padding:14px; border-radius:10px; background:#eef2ff; color:var(--accent); font-weight:600; text-align:center; display:none; }
-  .tools { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .vhead { position:sticky; top:0; z-index:10; background:var(--bg); padding:12px 0 2px; margin-bottom:12px;
+           box-shadow:0 8px 8px -8px rgba(0,0,0,.12); }
+  .vtop { display:flex; align-items:center; gap:14px; margin-bottom:10px; flex-wrap:wrap; }
+  .vtop .back { margin:0; }
+  .vtop h2 { font-size:1.25rem; }
+  .tools { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
   .tools button { padding:8px 12px; border:2px solid #e5e7eb; border-radius:999px; background:#fff; color:var(--text); cursor:pointer; font-size:.9rem; }
   .tools button.on { border-color:var(--accent); background:#eef2ff; color:var(--accent); font-weight:600; }
   .flash { background:var(--card); border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,.06); min-height:240px; padding:28px;
@@ -325,15 +330,17 @@
 
   function renderVocab() {
     const v = vocab, w = v.list[v.i], n = v.list.length;
-    const tools = `
-      <button class="back" onclick="showChapters()">← 장 선택으로</button>
-      <h2 style="margin-bottom:12px">${v.ch}장 단어장</h2>
+    const tools = `<div class="vhead">
+      <div class="vtop">
+        <button class="back" onclick="showChapters()">← 장 선택으로</button>
+        <h2>${v.ch}장 단어장</h2>
+      </div>
       <div class="tools">
         <button class="${v.mode === "card" ? "on" : ""}" onclick="setVocab('card')">🃏 카드</button>
         <button class="${v.mode === "list" ? "on" : ""}" onclick="setVocab('list')">📋 목록</button>
         <button class="${v.shuffle ? "on" : ""}" onclick="setVocab('shuffle')">🔀 섞기</button>
         <button class="${v.reverse ? "on" : ""}" onclick="setVocab('reverse')">🔁 뜻 먼저 보기</button>
-      </div>`;
+      </div></div>`;
     if (v.mode === "list") {
       let prev = null;
       $("examBody").innerHTML = tools + `<div class="wlist">${v.list.map(x => {
